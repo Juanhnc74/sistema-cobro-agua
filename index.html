@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sistema Profesional - Cobro de Agua</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Contenedor login con fondo de olas (SIN CAMBIOS VISUALES) -->
+  <div id="loginContainer">
+    <div class="ocean">
+      <div class="wave"></div>
+      <div class="wave"></div>
+    </div>
+
+    <div id="loginView" class="center-card">
+      <img id="mainLogo" src="logo.jpg" alt="logo" />
+      <h2>Presidencia De Comunidad De Santa Anita Huiloac</h2>
+      <h2>Sistema Cobro de Agua 💧 🚰 </h2>
+      <input id="loginUser" placeholder="Usuario" />
+      <div class="password-wrap">
+        <input id="loginPass" type="password" placeholder="Contraseña" />
+        <button id="togglePass" class="icon-btn" type="button" title="Mostrar/Ocultar">
+          <span>👁️</span>
+        </button>
+      </div>
+      <div class="row" style="justify-content:center">
+        <button id="btnLogin" class="btn-12">
+          <span>Entrar</span>
+        </button>
+      </div>
+      <p class="small">Usuario: <strong>admin</strong> | Contraseña: <strong>aguapotable2027</strong> / <strong>administracion2027</strong></p>
+      <p id="loginMsg" class="error"></p>
+    </div>
+  </div>
+
+  <!-- Aplicación -->
+  <div id="app" class="app hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="logo.jpg" alt="logo" class="brand-logo" />
+        <h3>Santa Anita Huiloac</h3>
+      </div>
+      <nav id="sideNav">
+        <button class="side-btn active neon" data-view="dashboard">🏠 Inicio</button>
+        <button class="side-btn neon" data-view="register">📝 Registrar usuario</button>
+        <button class="side-btn neon" data-view="manage">🔎 Buscar / Gestionar</button>
+        <button class="side-btn neon" data-view="payments">💵 Pagos</button>
+        <button class="side-btn neon" data-view="debtors">⚠️ Deudores (+3)</button>
+        <button class="side-btn neon" data-view="history">📚 Historial</button>
+        <button class="side-btn neon" data-view="reports">📊 Reportes</button>
+        <button class="side-btn neon" id="btnLogout">🚪 Cerrar sesión</button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="stats">
+          <div>Total usuarios: <strong id="statUsers">0</strong></div>
+          <div>Recaudado mes: <strong id="statMonth">$0</strong></div>
+        </div>
+        <div class="search-inline">
+          <div class="search-shell">
+            <span class="loupe">🔍</span>
+            <input id="quickSearch" placeholder="Buscar usuario por número o nombre..." />
+          </div>
+        </div>
+      </header>
+
+      <section id="dashboard" class="view active">
+        <h2>Panel</h2>
+        <div class="grid">
+          <div class="card lift">
+            <h3>Total recaudado mes</h3>
+            <div id="panelMonth" class="kpi">$0</div>
+          </div>
+          <div class="card lift">
+            <h3>Usuarios totales</h3>
+            <div id="panelUsers" class="kpi">0</div>
+          </div>
+          <div class="card lift">
+            <h3>Deudores (≥3 meses)</h3>
+            <div id="panelDeudores" class="kpi">0</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="register" class="view">
+        <h2>📝 Registrar Nuevo Usuario</h2>
+        <form id="formRegister" class="form-grid pretty">
+          <label>Número de Usuario
+            <input id="r_num" required placeholder="Ejemplo: 001" />
+          </label>
+          <label>Nombre completo
+            <input id="r_name" required placeholder="Nombre completo" />
+          </label>
+          <label>Calle
+            <input id="r_calle" required placeholder="Nombre de la calle" />
+          </label>
+          <label>Teléfono (10 dígitos)
+            <input id="r_tel" required placeholder="Número de teléfono" />
+          </label>
+          <label>Tipo tarifa
+            <select id="r_tarifa">
+              <option value="domestica">Doméstica ($90)</option>
+              <option value="hidrante">Hidrante ($20)</option>
+              <option value="comercial">Comercial ($150)</option>
+            </select>
+          </label>
+          <div class="row g12">
+            <button type="submit" class="btn-ghost glow">Guardar</button>
+            <button type="button" id="clearRegister" class="btn-ghost">Limpiar</button>
+          </div>
+          <p class="hint">No se permiten números de usuario repetidos.</p>
+        </form>
+        <p id="regMsg" class="small"></p>
+      </section>
+
+      <section id="manage" class="view">
+        <h2>🔎 Buscar y Gestionar Usuarios</h2>
+        <div class="row g12">
+          <div class="search-shell large">
+            <span class="loupe">🔍</span>
+            <input id="m_search" placeholder="Buscar por número o nombre (filtro en tiempo real)" />
+          </div>
+          <select id="filterMode">
+            <option value="all">Todos</option>
+            <option value="deudores">Solo deudores (≥3)</option>
+          </select>
+        </div>
+        <div class="row g12 mt10">
+          <button id="prevPage" class="btn-ghost">Anterior</button>
+          <div id="pageInfo" class="small badge">1 / 1</div>
+          <button id="nextPage" class="btn-ghost">Siguiente</button>
+        </div>
+        <ul id="userList" class="list"></ul>
+
+        <div id="userDetail" class="card hidden">
+          <h3>Detalles de usuario</h3>
+          <div class="form-inline">
+            <label>#<input id="d_num" disabled /></label>
+            <label>Nombre<input id="d_name" /></label>
+            <label>Calle<input id="d_calle" /></label>
+            <label>Teléfono<input id="d_tel" /></label>
+            <label>Tarifa
+              <select id="d_tarifa">
+                <option value="domestica">Doméstica ($90)</option>
+                <option value="hidrante">Hidrante ($20)</option>
+                <option value="comercial">Comercial ($150)</option>
+              </select>
+            </label>
+          </div>
+          <div class="row g12 mt10">
+            <button id="btnSaveUser" class="btn-ghost glow">Guardar cambios</button>
+            <button id="btnDeleteUser" class="btn-danger">Eliminar usuario</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="payments" class="view">
+        <h2>💵 Registrar Pago</h2>
+        <div class="row g12">
+          <div class="search-shell">
+            <span class="loupe">🔍</span>
+            <input id="p_search" placeholder="Buscar usuario por número o nombre (autocompleta)" />
+          </div>
+          <div id="selectedUser" class="card small">Usuario: <span id="selText">—</span></div>
+        </div>
+        <div class="row g12">
+          <label>Año
+            <input id="p_year" type="number" />
+          </label>
+          <label>Tarifa
+            <select id="p_rate">
+              <option value="90">Doméstica - $90</option>
+              <option value="20">Hidrante - $20</option>
+              <option value="150">Comercial - $150</option>
+            </select>
+          </label>
+          <label class="row center">
+            <input id="p_all" type="checkbox" /> Seleccionar todo el año
+          </label>
+          <label class="row center">
+            <input id="p_hidrante" type="checkbox" /> ¿Incluye hidrante?
+          </label>
+        </div>
+        <div id="monthsGrid" class="months"></div>
+        <div class="row g12 mt10">
+          <button id="calcTotal" class="btn-ghost">Calcular total</button>
+          <button id="doPay" class="btn-ghost glow">Registrar & Imprimir</button>
+          <a id="waShare" class="btn-ghost" target="_blank" rel="noopener">Compartir WhatsApp</a>
+        </div>
+        <p id="payInfo" class="small"></p>
+      </section>
+
+      <section id="debtors" class="view">
+        <h2>⚠️ Deudores con 3+ meses</h2>
+        <ul id="debtorsList" class="list"></ul>
+      </section>
+
+      <section id="history" class="view">
+        <h2>📚 Historial de Pagos</h2>
+        <div class="row g12">
+          <div class="search-shell">
+            <span class="loupe">🔍</span>
+            <input id="h_search" placeholder="Busca un usuario para ver su historial..." />
+          </div>
+          <button id="h_print" class="btn-ghost">Imprimir / PDF</button>
+          <button id="h_csv" class="btn-ghost">Exportar CSV</button>
+        </div>
+        <table class="table mt10">
+          <thead>
+            <tr><th>Folio</th><th>Fecha</th><th>Año</th><th>Meses</th><th>Monto</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </section>
+
+      <section id="reports" class="view">
+        <h2>📊 Reportes (requiere contraseña)</h2>
+        <label>Fecha <input id="r_date" type="date" /></label>
+        <div class="row g12">
+          <button id="repDay" class="btn-ghost">Por día</button>
+          <button id="repMonth" class="btn-ghost">Por mes</button>
+          <button id="repYear" class="btn-ghost">Por año</button>
+        </div>
+        <div class="row g12 mt10">
+          <button id="repPrint" class="btn-ghost">Imprimir / PDF</button>
+          <button id="repCSV" class="btn-ghost">Exportar CSV</button>
+        </div>
+        <div id="repResult" class="mt10"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
