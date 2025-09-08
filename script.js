@@ -1,8 +1,78 @@
-// ===== Configuración y almacenamiento =====
-const ADMIN_USER = 'admin';
-const PASS_A = 'aguapotable2027';
-const PASS_B = 'administracion2027';
-const MAX_YEAR = 2030;
+// ===== Mostrar/Ocultar contraseña =====
+const toggleBtn = document.getElementById("togglePass");
+const passwordInput = document.getElementById("loginPass");
+
+toggleBtn.addEventListener("click", () => {
+    if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        toggleBtn.innerHTML = "<span>🙈</span>";
+    } else {
+        passwordInput.type = "password";
+        toggleBtn.innerHTML = "<span>👁️</span>";
+    }
+});
+
+// ===== Login =====
+document.getElementById("btnLogin").addEventListener("click", async () => {
+    const usuario = document.getElementById("loginUser").value.trim();
+    const password = document.getElementById("loginPass").value.trim();
+    const loginMsg = document.getElementById("loginMsg");
+
+    if (!usuario || !password) {
+        loginMsg.innerText = "Por favor ingresa usuario y contraseña";
+        loginMsg.style.color = "red";
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("usuario", usuario);
+    formData.append("password", password);
+
+    try {
+        let response = await fetch("backend/login.php", {
+            method: "POST",
+            body: formData
+        });
+
+        if (!response.ok) throw new Error("Error en la respuesta del servidor");
+
+        let result = await response.json();
+
+        if (result.status === "ok") {
+            loginMsg.innerText = result.message;
+            loginMsg.style.color = "green";
+
+            // Mostrar la aplicación y ocultar login
+            document.getElementById("loginView").classList.add("hidden");
+            document.getElementById("loginContainer").classList.add("hidden");
+            document.getElementById("app").classList.remove("hidden");
+        } else {
+            loginMsg.innerText = result.message;
+            loginMsg.style.color = "red";
+        }
+
+    } catch (error) {
+        console.error("Error:", error);
+        loginMsg.innerText = "Error de conexión al servidor";
+        loginMsg.style.color = "red";
+    }
+});
+
+// ===== Logout =====
+document.getElementById("btnLogout").addEventListener("click", () => {
+    // Ocultar la aplicación
+    document.getElementById("app").classList.add("hidden");
+
+    // Mostrar la pantalla de login
+    document.getElementById("loginContainer").classList.remove("hidden");
+    document.getElementById("loginView").classList.remove("hidden");
+
+    // Limpiar campos y mensajes
+    document.getElementById("loginUser").value = "";
+    document.getElementById("loginPass").value = "";
+    document.getElementById("loginMsg").innerText = "";
+});
+
 
 let users = JSON.parse(localStorage.getItem('pro_users') || '[]');       // {num,name,calle,tel,tarifa}
 let payments = JSON.parse(localStorage.getItem('pro_payments') || '[]'); // {folio,userNum,dateISO,year,months[],rate,total,hydrant}
@@ -21,7 +91,7 @@ const saveAll = () => {
 };
 
 // ===== Login =====
-$('togglePass').addEventListener('click', ()=>{
+/*$('togglePass').addEventListener('click', ()=>{
   const i = $('loginPass');
   i.type = i.type === 'password' ? 'text' : 'password';
 });
@@ -34,7 +104,7 @@ $('btnLogin').addEventListener('click', ()=>{
     $('loginMsg').textContent = 'Usuario o contraseña incorrectos';
   }
 });
-$('btnLogout').addEventListener('click', ()=> location.reload());
+$('btnLogout').addEventListener('click', ()=> location.reload()); */
 
 // ===== Navegación vistas =====
 const views = Array.from(document.querySelectorAll('.view'));
@@ -121,24 +191,24 @@ function money(n){
 }
 
 // ====== Panel / estadísticas ======
-function renderStats(){
-  // Total usuarios
-  $('statUsers').textContent = String(users.length);
-  $('panelUsers').textContent = String(users.length);
+async function updateDashboard() {
+    try {
+        const response = await fetch("backend/get_dashboard.php");
+        const data = await response.json();
 
-  // Recaudado del mes corriente
-  const now = new Date();
-  const ym = now.toISOString().slice(0,7); // yyyy-mm
-  const total = payments
-    .filter(p => p.dateISO.slice(0,7) === ym)
-    .reduce((acc, p) => acc + Number(p.total||0), 0);
-  $('statMonth').textContent = money(total);
-  $('panelMonth').textContent = money(total);
-
-  // Deudores (>=3)
-  const count = countDebtors();
-  $('panelDeudores').textContent = String(count);
+        if(data.status === "ok") {
+            document.getElementById("panelMonth").textContent = "$" + data.total_mes;
+            document.getElementById("panelUsers").textContent = data.total_usuarios;
+            document.getElementById("panelDeudores").textContent = data.total_deudores;
+        }
+    } catch (error) {
+        console.error("Error al actualizar dashboard:", error);
+    }
 }
+
+// Llamar al cargar la página
+updateDashboard();
+
 
 function countDebtors(){
   let cnt = 0;
@@ -170,100 +240,143 @@ function monthsOwed(userNum){
 }
 
 // ====== Registro de usuarios ======
-function onRegister(e){
-  e.preventDefault();
-  const num = $('r_num').value.trim();
-  const name = $('r_name').value.trim();
-  const calle = $('r_calle').value.trim();
-  const tel = $('r_tel').value.trim();
-  const tarifa = $('r_tarifa').value;
+document.getElementById("formRegister").addEventListener("submit", async function(e) {
+    e.preventDefault();
 
-  if(!num || !name || !calle || !tel) { toast('Completa todos los campos.'); return; }
-  if(users.some(u => u.num.toLowerCase() === num.toLowerCase())) { toast('Número de usuario ya existente.'); return; }
-  if(!/^\d{10}$/.test(tel)){ toast('El teléfono debe tener 10 dígitos.'); return; }
+    const numero_usuario = document.getElementById("r_num").value.trim();
+    const nombre         = document.getElementById("r_name").value.trim();
+    const direccion      = document.getElementById("r_calle").value.trim();
+    const telefono       = document.getElementById("r_tel").value.trim();
+    const tarifa         = document.getElementById("r_tarifa").value;
 
-  users.push({ num, name, calle, tel, tarifa });
-  saveAll();
-  $('formRegister').reset();
-  $('regMsg').textContent = 'Usuario guardado correctamente.';
-  renderStats();
-  renderManageList();
-  toast('Usuario registrado ✅');
-}
+    if(!numero_usuario || !nombre || !direccion || !telefono) {
+        toast("Completa todos los campos.");
+        return;
+    }
+    if(!/^\d{10}$/.test(telefono)) {
+        toast("El teléfono debe tener 10 dígitos.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("numero_usuario", numero_usuario);
+    formData.append("nombre", nombre);
+    formData.append("direccion", direccion);
+    formData.append("telefono", telefono);
+    formData.append("tarifa", tarifa);
+
+    try {
+        const response = await fetch("backend/register_user.php", {
+            method: "POST",
+            body: formData
+        });
+        const result = await response.json();
+
+        const regMsg = document.getElementById("regMsg");
+        regMsg.textContent = result.message;
+        regMsg.style.color = result.status === "ok" ? "green" : "red";
+
+        if(result.status === "ok") {
+            document.getElementById("formRegister").reset();
+            toast("Usuario registrado ✅");
+
+            // ✅ Actualizar el dashboard automáticamente
+            updateDashboard();
+
+            // Opcional: actualizar la lista de usuarios
+            renderManageList();
+        }
+
+    } catch (error) {
+        console.error("Error:", error);
+        toast("Error en la conexión al servidor.");
+    }
+});
+
 
 // ====== Gestionar (listado + edición + paginado) ======
 let pageIndex = 0;
 const pageSize = 8;
-const maxPage = ()=> Math.max(0, Math.ceil(getFilteredUsers().length / pageSize) - 1);
 
-function getFilteredUsers(){
-  const q = $('m_search').value?.trim().toLowerCase() || '';
-  const mode = $('filterMode').value;
-  let list = users.filter(u => 
-    u.num.toLowerCase().includes(q) || u.name.toLowerCase().includes(q)
-  );
-  if(mode==='deudores'){
-    list = list.filter(u => monthsOwed(u.num) >= 3);
-  }
-  return list;
+async function fetchUsers(){
+    const q = $('m_search').value?.trim() || '';
+    const mode = $('filterMode').value;
+    const res = await fetch(`backend/get_users.php?q=${encodeURIComponent(q)}&mode=${mode}`);
+    const data = await res.json();
+    return data.status==="ok" ? data.users : [];
 }
 
-function renderManageList(){
-  const list = getFilteredUsers();
-  if(pageIndex > maxPage()) pageIndex = maxPage();
-  const start = pageIndex * pageSize;
-  const chunk = list.slice(start, start + pageSize);
+async function renderManageList(){
+    const list = await fetchUsers();
+    const maxPage = Math.max(0, Math.ceil(list.length / pageSize)-1);
+    if(pageIndex > maxPage) pageIndex = maxPage;
 
-  $('userList').innerHTML = chunk.map(u=>{
-    const isDeb = monthsOwed(u.num) >= 3;
-    return `<li data-num="${u.num}">
-      <div><strong>#${u.num}</strong> — ${u.name}<br><span class="small">${u.calle} • ${u.tel}</span></div>
-      <div>${isDeb ? '<span class="owed">Deuda 3+</span>' : '<span class="paid">Al día</span>'}</div>
-    </li>`;
-  }).join('') || `<li><div>No hay resultados</div></li>`;
+    const start = pageIndex * pageSize;
+    const chunk = list.slice(start, start + pageSize);
 
-  $('pageInfo').textContent = `${Math.min(maxPage()+1, pageIndex+1)} / ${maxPage()+1}`;
+    $('userList').innerHTML = chunk.map(u=>{
+        return `<li data-id="${u.id}">
+            <div><strong>#${u.numero_usuario}</strong> — ${u.nombre}<br><span class="small">${u.direccion} • ${u.telefono}</span></div>
+            <div><span class="paid">Al día</span></div>
+        </li>`;
+    }).join('') || `<li><div>No hay resultados</div></li>`;
 
-  // click en usuario
-  document.querySelectorAll('#userList li[data-num]').forEach(li=>{
-    li.addEventListener('click', ()=> showUserDetail(li.dataset.num));
-  });
+    $('pageInfo').textContent = `${pageIndex+1} / ${maxPage+1}`;
+
+    document.querySelectorAll('#userList li[data-id]').forEach(li=>{
+        li.onclick = ()=> showUserDetail(li.dataset.id);
+    });
 }
 
-function showUserDetail(num){
-  const u = users.find(x=>x.num===num);
-  if(!u) return;
-  $('userDetail').classList.remove('hidden');
-  $('d_num').value = u.num;
-  $('d_name').value = u.name;
-  $('d_calle').value = u.calle;
-  $('d_tel').value = u.tel;
-  $('d_tarifa').value = u.tarifa;
+async function showUserDetail(id){
+    const users = await fetchUsers();
+    const u = users.find(x=>x.id==id);
+    if(!u) return;
 
-  $('btnSaveUser').onclick = ()=>{
-    u.name = $('d_name').value.trim();
-    u.calle = $('d_calle').value.trim();
-    u.tel = $('d_tel').value.trim();
-    u.tarifa = $('d_tarifa').value;
-    if(!u.name || !u.calle || !/^\d{10}$/.test(u.tel)){ toast('Datos inválidos.'); return; }
-    saveAll();
-    renderManageList();
-    toast('Cambios guardados ✅');
-  };
+    $('userDetail').classList.remove('hidden');
+    $('d_num').value = u.numero_usuario;
+    $('d_name').value = u.nombre;
+    $('d_calle').value = u.direccion;
+    $('d_tel').value = u.telefono;
+    $('d_tarifa').value = u.tarifa;
 
-  $('btnDeleteUser').onclick = ()=>{
-    if(!checkAdminPassword()) return;
-    if(confirm('¿Eliminar usuario y todos sus pagos?')){
-      payments = payments.filter(p=>p.userNum!==u.num);
-      users = users.filter(x=>x.num!==u.num);
-      saveAll();
-      $('userDetail').classList.add('hidden');
-      renderManageList();
-      renderStats();
-      toast('Usuario eliminado');
-    }
-  };
+    $('btnSaveUser').onclick = async ()=>{
+        const form = new FormData();
+        form.append('id', id);
+        form.append('nombre', $('d_name').value.trim());
+        form.append('direccion', $('d_calle').value.trim());
+        form.append('telefono', $('d_tel').value.trim());
+        form.append('tarifa', $('d_tarifa').value);
+
+        const res = await fetch('backend/update_user.php',{method:'POST', body:form});
+        const data = await res.json();
+        toast(data.message);
+        renderManageList();
+    };
+
+    $('btnDeleteUser').onclick = async ()=>{
+        if(!confirm('¿Eliminar usuario y todos sus pagos?')) return;
+        const form = new FormData();
+        form.append('id', id);
+        const res = await fetch('backend/delete_user.php',{method:'POST',body:form});
+        const data = await res.json();
+        toast(data.message);
+        $('userDetail').classList.add('hidden');
+        renderManageList();
+    };
 }
+
+// Paginación
+$('prevPage').onclick = ()=>{ pageIndex--; renderManageList(); };
+$('nextPage').onclick = ()=>{ pageIndex++; renderManageList(); };
+
+// Buscador y filtro
+$('m_search').oninput = renderManageList;
+$('filterMode').onchange = renderManageList;
+
+// Inicializar
+renderManageList();
+
 
 // ====== Búsqueda rápida (barra superior) ======
 function quickSearch(){
@@ -284,99 +397,61 @@ function switchView(id){
 }
 
 // ====== Pagos ======
-let selectedUser = null;
 
-function handlePaySearch(){
-  const q = $('p_search').value.trim().toLowerCase();
-  const u = users.find(u => u.num.toLowerCase()===q || u.name.toLowerCase().includes(q));
-  if(u) setSelectedUser(u);
+async function doPay(){
+    if(!selectedUser){ toast('Selecciona un usuario.'); return; }
+
+    const year = Number($('p_year').value || 0);
+    if(!year || year > MAX_YEAR){ toast(`El año debe ser válido (hasta ${MAX_YEAR}).`); return; }
+
+    const months = selectedMonths();
+    if(months.length===0){ toast('Selecciona al menos un mes.'); return; }
+
+    const rate = Number($('p_rate').value || 0);
+    const includeHydrant = $('p_hidrante').checked;
+    const total = calcTotal();
+
+    // Enviar datos al backend
+    const formData = new FormData();
+    formData.append("numero_usuario", selectedUser.numero_usuario); // debe coincidir con tu campo en BD
+    formData.append("anio", year);
+    formData.append("meses", JSON.stringify(months)); // array de meses
+    formData.append("tarifa", rate);
+    formData.append("hidrante", includeHydrant ? 1 : 0);
+    formData.append("monto", total);
+
+    try {
+        const response = await fetch("backend/register_payment.php", {
+            method: "POST",
+            body: formData
+        });
+        const result = await response.json();
+
+        if(result.status === "ok"){
+            toast("Pago(s) registrado(s) ✅");
+            renderStats(); // actualizar KPIs
+        } else {
+            toast(result.message || "Error al registrar pago.");
+        }
+    } catch(err){
+        console.error(err);
+        toast("Error de conexión con el servidor.");
+    }
+
+    // Preparar WhatsApp y abrir recibo
+    const folio = result.folio || `F-${Date.now()}`; // si el backend devuelve folio, úsalo
+    const dateISO = new Date().toISOString();
+    const waMsg = buildWhatsAppReceipt(selectedUser, folio, dateISO, months, year, total, includeHydrant);
+    $('waShare').href = `https://wa.me/52${selectedUser.telefono}?text=${encodeURIComponent(waMsg)}`;
+
+    openReceiptWindow(selectedUser, { folio, dateISO, year, months, rate, total, hydrant: includeHydrant });
+
+    // Limpiar selección
+    $('p_all').checked = false;
+    $('monthsGrid').querySelectorAll('input[type="checkbox"]').forEach(cb=> cb.checked = false);
+    $('payInfo').textContent = '';
 }
 
-function setSelectedUser(u){
-  selectedUser = u;
-  $('selText').textContent = `#${u.num} — ${u.name}`;
-  // Pre-set tarifa
-  const rate = tarifaMap[u.tarifa] || 90;
-  $('p_rate').value = String(rate);
-  calcTotal();
-}
-
-function buildMonths(){
-  const box = $('monthsGrid');
-  box.innerHTML = '';
-  MONTHS.forEach((m, idx)=>{
-    const id = `m_${idx}`;
-    const label = document.createElement('label');
-    label.innerHTML = `<input type="checkbox" id="${id}" data-month="${idx}" /> ${m}`;
-    box.appendChild(label);
-  });
-}
-function toggleAllMonths(){
-  const on = $('p_all').checked;
-  $('monthsGrid').querySelectorAll('input[type="checkbox"]').forEach(cb=> cb.checked = on);
-  calcTotal();
-}
-function selectedMonths(){
-  const arr = [];
-  $('monthsGrid').querySelectorAll('input[type="checkbox"]').forEach(cb=>{
-    if(cb.checked) arr.push(+cb.dataset.month);
-  });
-  return arr.sort((a,b)=>a-b);
-}
-function calcTotal(){
-  const months = selectedMonths();
-  const rate = Number($('p_rate').value || 0);
-  const includeHydrant = $('p_hidrante').checked;
-  let total = rate * months.length;
-  if(includeHydrant) total += 20 * months.length; // hidrante por mes (si así lo requieres)
-  $('payInfo').textContent = months.length
-    ? `Meses: ${months.map(i=>MONTHS[i]).join(', ')} — Total: ${money(total)}`
-    : `Selecciona meses.`;
-  return total;
-}
-
-function doPay(){
-  if(!selectedUser){ toast('Selecciona un usuario.'); return; }
-  const year = Number($('p_year').value || 0);
-  if(!year || year > MAX_YEAR){ toast(`El año debe ser válido (hasta ${MAX_YEAR}).`); return; }
-  const months = selectedMonths();
-  if(months.length===0){ toast('Selecciona al menos un mes.'); return; }
-  const rate = Number($('p_rate').value || 0);
-  const includeHydrant = $('p_hidrante').checked;
-
-  // Evitar meses duplicados
-  const alreadyPaid = payments.filter(p=>p.userNum===selectedUser.num && p.year===year)
-                              .flatMap(p=>p.months);
-  const duplicate = months.filter(m=> alreadyPaid.includes(m));
-  if(duplicate.length){
-    toast(`Ya existen pagos para: ${duplicate.map(i=>MONTHS[i]).join(', ')}`);
-    return;
-  }
-
-  // Total
-  const total = calcTotal();
-  if(!isFinite(total) || total<=0){ toast('Total inválido.'); return; }
-
-  // Registrar pago
-  const folio = genFolio();
-  const dateISO = new Date().toISOString();
-  payments.push({ folio, userNum: selectedUser.num, dateISO, year, months, rate, total, hydrant: includeHydrant });
-  saveAll();
-  renderStats();
-  toast('Pago registrado ✅');
-
-  // Preparar WhatsApp
-  const waMsg = buildWhatsAppReceipt(selectedUser, folio, dateISO, months, year, total, includeHydrant);
-  $('waShare').href = `https://wa.me/52${selectedUser.tel}?text=${encodeURIComponent(waMsg)}`;
-
-  // Imprimir recibo doble (sin bloquear: ventana creada sin esperar)
-  openReceiptWindow(selectedUser, { folio, dateISO, year, months, rate, total, hydrant: includeHydrant });
-
-  // Limpiar selección
-  $('p_all').checked = false;
-  $('monthsGrid').querySelectorAll('input[type="checkbox"]').forEach(cb=> cb.checked = false);
-  $('payInfo').textContent = '';
-}
 
 function genFolio(){
   // Folio incremental basado en conteo + fecha
