@@ -366,6 +366,103 @@ async function showUserDetail(id){
     };
 }
 
+// ====== Gestionar pago ====== 2.0
+
+const searchInput = document.getElementById('p_search');
+const selText = document.getElementById('selText');
+let selectedUserId = null;
+
+searchInput.addEventListener('input', debounce(async () => {
+    const q = searchInput.value.trim();
+    if(!q) return;
+
+    const res = await fetch(`backend/search_users.php?q=${encodeURIComponent(q)}`);
+    const users = await res.json();
+
+    const list = document.createElement('div');
+    list.classList.add('search-results');
+    list.innerHTML = '';
+    users.forEach(u => {
+        const item = document.createElement('div');
+        item.textContent = `${u.nombre} - ${u.telefono}`;
+        item.addEventListener('click', () => {
+            selText.textContent = u.nombre;
+            selectedUserId = u.id;
+            document.querySelectorAll('.search-results').forEach(e=>e.remove());
+        });
+        list.appendChild(item);
+    });
+
+    document.querySelector('.search-shell').appendChild(list);
+}, 300));
+
+function debounce(fn, delay=300){
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(()=>fn(...args), delay);
+    }
+}
+const monthsGrid = document.getElementById('monthsGrid');
+const yearInput = document.getElementById('p_year');
+const rateSelect = document.getElementById('p_rate');
+const allCheckbox = document.getElementById('p_all');
+const hidranteCheckbox = document.getElementById('p_hidrante');
+const calcBtn = document.getElementById('calcTotal');
+const doPayBtn = document.getElementById('doPay');
+const payInfo = document.getElementById('payInfo');
+
+const months = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+function renderMonths(){
+    monthsGrid.innerHTML = '';
+    months.forEach(m=>{
+        const lbl = document.createElement('label');
+        lbl.innerHTML = `<input type="checkbox" value="${m}"> ${m}`;
+        monthsGrid.appendChild(lbl);
+    });
+}
+
+yearInput.value = new Date().getFullYear();
+renderMonths();
+
+allCheckbox.addEventListener('change', ()=>{
+    const checked = allCheckbox.checked;
+    monthsGrid.querySelectorAll('input').forEach(i=>i.checked = checked);
+});
+
+calcBtn.addEventListener('click', ()=>{
+    const tarifa = parseFloat(rateSelect.value);
+    const hidrante = hidranteCheckbox.checked ? 20 : 0;
+    const selectedMonths = Array.from(monthsGrid.querySelectorAll('input:checked')).map(i=>i.value);
+    const total = (tarifa + hidrante) * selectedMonths.length;
+    payInfo.textContent = `Meses: ${selectedMonths.join(', ')} | Total: $${total.toFixed(2)}`;
+});
+
+doPayBtn.addEventListener('click', async ()=>{
+    if(!selectedUserId){
+        alert('Selecciona un usuario primero');
+        return;
+    }
+    const selectedMonths = Array.from(monthsGrid.querySelectorAll('input:checked')).map(i=>i.value);
+    const data = {
+        usuario_id: selectedUserId,
+        anio: parseInt(yearInput.value),
+        tarifa: parseFloat(rateSelect.value),
+        meses: selectedMonths,
+        hidrante: hidranteCheckbox.checked
+    };
+    const res = await fetch('backend/register_payment.php', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers:{'Content-Type':'application/json'}
+    });
+    const result = await res.json();
+    alert(result.msg);
+});
+
+
+
 // Paginación
 $('prevPage').onclick = ()=>{ pageIndex--; renderManageList(); };
 $('nextPage').onclick = ()=>{ pageIndex++; renderManageList(); };
